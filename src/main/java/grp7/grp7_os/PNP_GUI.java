@@ -8,8 +8,10 @@ import javax.swing.table.DefaultTableModel;
 import java.util.*;
 import javax.swing.table.*;
 /**
- *
- * @author cecile
+ * Author: Rafael Francis P. Carrillo
+ * Algorithm: Priority Scheduling (Non-Preemptive)
+ * Conventions: Lower priority number = higher priority. No aging.
+ * Ties broken by: 1. Higher Priority (smaller number) -> 2. Earlier Arrival -> 3. Lower PID.
  */
 public class PNP_GUI extends javax.swing.JFrame {
     public String algorithm = "PNP";
@@ -111,11 +113,11 @@ public class PNP_GUI extends javax.swing.JFrame {
 
             },
             new String [] {
-                "Completion Time", "Turn Around Time", "Wait Time"
+                "Completion Time", "Turn Around Time", "Wait Time", "Response Time"
             }
         ) {
             boolean[] canEdit = new boolean [] {
-                false, false, false
+                false, false, true, true
             };
 
             public boolean isCellEditable(int rowIndex, int columnIndex) {
@@ -244,7 +246,67 @@ public class PNP_GUI extends javax.swing.JFrame {
     }//GEN-LAST:event_addRowActionPerformed
 
     private void calculateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_calculateActionPerformed
-        
+             // commit any active cell edit before reading the table
+        if (inputTable.isEditing()) {
+            inputTable.getCellEditor().stopCellEditing();
+        }
+
+        int rows = inModel.getRowCount();
+        if (rows == 0) {
+            JOptionPane.showMessageDialog(this, "Please add at least one process.", "Input Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        int[] pid = new int[rows];
+        int[] arrival = new int[rows];
+        int[] burst = new int[rows];
+        int[] priority = new int[rows];
+
+        try {
+            for (int i = 0; i < rows; i++) {
+                pid[i] = Integer.parseInt(inModel.getValueAt(i, 0).toString());
+                arrival[i] = Integer.parseInt(inModel.getValueAt(i, 1).toString());
+                burst[i] = Integer.parseInt(inModel.getValueAt(i, 2).toString());
+                priority[i] = Integer.parseInt(inModel.getValueAt(i, 3).toString());
+
+    //            check if AT and prio are >= 0, if BT is >0
+                if (arrival[i] < 0 || burst[i] <= 0 || priority[i] < 0) {
+                    JOptionPane.showMessageDialog(this, "Arrival and Priority must be greater than or equal to 0, and Burst Time must be > 0.", "Invalid Range", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
+        } catch (Exception e) {
+    //        error if there is anything other than an integer
+            JOptionPane.showMessageDialog(this, "All cells must contain valid whole numbers.", "Input Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        PNP_Scheduler sched = new PNP_Scheduler();
+        sched.calculate(pid, arrival, burst, priority);
+
+        // populate per-process output table
+        outModel.setRowCount(0);
+        for (int i = 0; i < rows; i++) {
+            outModel.addRow(new Object[]{
+                sched.completionTime[i],
+                sched.turnaroundTime[i],
+                sched.waitingTime[i],
+                sched.responseTime[i]
+            });
+        }
+
+        // populate summary metrics table
+        resultsModel.setRowCount(0);
+        resultsModel.addRow(new Object[]{
+            Math.round(sched.avgWaitTime * 100.0) / 100.0,
+            Math.round(sched.avgTurnaroundTime * 100.0) / 100.0,
+            Math.round(sched.avgResponseTime * 100.0) / 100.0,
+            Math.round(sched.cpuUtilization * 100.0) / 100.0,
+            Math.round(sched.throughput * 100.0) / 100.0
+        });
+
+        // Draw the Gantt chart
+        renderGanttChart(sched.ganttBlocks);
     }//GEN-LAST:event_calculateActionPerformed
 
     private void clearActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearActionPerformed
