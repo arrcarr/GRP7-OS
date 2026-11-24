@@ -13,23 +13,15 @@ import java.util.Set;
  * Author: Prince Irwin Martin C. Diaz
  * Algorithm: Multi-level Queue Scheduling
  * Conventions:
+ * Queue 1 and queue 2 use Round Robin; queue 3 uses FCFS.
  * A higher-priority queue always preempts a lower-priority one.
- * Each queue uses its own algorithm: FCFS, SJF, SRTF or RR.
  * Each process is assigned to a specific queue and does not move between queues.
  */
 
 public final class MLQ_Scheduler {
 
-    public enum Algorithm {
-        FCFS, SJF, SRTF, RR
-    }
-
     // One row of user input (queueLevel 1 = highest priority queue)
     public record ProcessInput(String id, int arrivalTime, int burstTime, int queueLevel) {
-    }
-
-    // Settings for one queue (quantumTime is only used when algorithm is RR)
-    public record QueueConfig(int level, Algorithm algorithm, int quantumTime) {
     }
 
     // Final computed values for one process (used for the results table)
@@ -54,7 +46,7 @@ public final class MLQ_Scheduler {
         }
     }
 
-    // Everything calculate() returns: per-process results, Gantt chart, and averages
+    // Everything calculate() returns
     public record ScheduleResult(
             List<ProcessResult> processes,
             List<GanttBlock> ganttBlocks,
@@ -77,23 +69,30 @@ public final class MLQ_Scheduler {
 
     // A queue's settings plus its ready line (processes that arrived and are waiting)
     private static final class QueueState {
-        private final QueueConfig config;
+        private final int level;
+        private final int quantumTime;
         private final ArrayDeque<ProcessState> ready = new ArrayDeque<>();
 
-        private QueueState(QueueConfig config) {
-            this.config = config;
+        private QueueState(int level, int quantumTime) {
+            this.level = level;
+            this.quantumTime = quantumTime;
+        }
+
+        private boolean usesRoundRobin() {
+            return level < 3;
         }
     }
 
-    // Runs the whole MLQ simulation, one time unit per loop
-    public ScheduleResult calculate(List<ProcessInput> processInputs, List<QueueConfig> queueConfigs) {
-        validate(processInputs, queueConfigs);
+    // Runs the whole MLQ simulation, one time per loop
+    public ScheduleResult calculate(
+            List<ProcessInput> processInputs, int queue1Quantum, int queue2Quantum) {
+        validate(processInputs, queue1Quantum, queue2Quantum);
 
-        // Build the queues in priority order (level 1 first = highest priority)
-        List<QueueState> queues = queueConfigs.stream()
-                .sorted(Comparator.comparingInt(QueueConfig::level))
-                .map(QueueState::new)
-                .toList();
+        // Queues 1 and 2 use RR, queue 3 uses FCFS
+        List<QueueState> queues = List.of(
+                new QueueState(1, queue1Quantum),
+                new QueueState(2, queue2Quantum),
+                new QueueState(3, 0));
 
         List<ProcessState> processes = new ArrayList<>();
         for (int i = 0; i < processInputs.size(); i++) {
@@ -124,7 +123,7 @@ public final class MLQ_Scheduler {
                 queues.get(arrived.input.queueLevel() - 1).ready.addLast(arrived);
             }
 
-            // Highest priority queue that has someone waiting (null if all are empty)
+            // Highest priority queue that has someone waiting
             QueueState highestReadyQueue = highestNonEmptyQueue(queues);
 
             // Nothing running and nothing waiting
@@ -137,8 +136,8 @@ public final class MLQ_Scheduler {
 
             // Preemption: a higher queue now has a waiting process, so kick the running one off
             if (activeProcess != null && highestReadyQueue != null
-                    && highestReadyQueue.config.level() < activeQueue.config.level()) {
-                if (activeQueue.config.algorithm() == Algorithm.RR) {
+                    && highestReadyQueue.level < activeQueue.level) {
+                if (activeQueue.usesRoundRobin()) {
                     activeQueue.ready.addLast(activeProcess);   // RR: goes to the back
                 } else {
                     activeQueue.ready.addFirst(activeProcess);  // Others: goes back to the front
@@ -149,10 +148,7 @@ public final class MLQ_Scheduler {
             }
 
             QueueState currentQueue = activeProcess == null ? highestReadyQueue : activeQueue;
-            if (activeProcess == null || currentQueue.config.algorithm() == Algorithm.SRTF) {
-                if (activeProcess != null) {
-                    currentQueue.ready.addFirst(activeProcess);
-                }
+            if (activeProcess == null) {
                 activeProcess = selectProcess(currentQueue);
                 activeQueue = currentQueue;
                 quantumCounter = 0;
@@ -164,18 +160,18 @@ public final class MLQ_Scheduler {
             activeProcess.remainingTime--;
             quantumCounter++;
             addGanttBlock(ganttBlocks, activeProcess.input.id(),
-                    activeQueue.config.level(), startTime, currentTime);
+                    activeQueue.level, startTime, currentTime);
 
             if (activeProcess.remainingTime == 0) {
-                // Process finished: save its completion time and free the CPU
+                // Process finished
                 activeProcess.completionTime = currentTime;
                 completedCount++;
                 activeProcess = null;
                 activeQueue = null;
                 quantumCounter = 0;
-            } else if (activeQueue.config.algorithm() == Algorithm.RR
-                    && quantumCounter == activeQueue.config.quantumTime()) {
-                // RR quantum used up: send the process to the back of its queue
+            } else if (activeQueue.usesRoundRobin()
+                    && quantumCounter == activeQueue.quantumTime) {
+                // RR quantum used up. Send the process to the back of its queue
                 activeQueue.ready.addLast(activeProcess);
                 activeProcess = null;
                 activeQueue = null;
@@ -209,31 +205,18 @@ public final class MLQ_Scheduler {
                 totalWaiting / processes.size());
     }
 
-    // Checks the input before simulating
-    private static void validate(List<ProcessInput> processes, List<QueueConfig> queueConfigs) {
+    // Checks the input
+    private static void validate(
+            List<ProcessInput> processes, int queue1Quantum, int queue2Quantum) {
         Objects.requireNonNull(processes, "Processes are required.");
-        Objects.requireNonNull(queueConfigs, "Queue configurations are required.");
         if (processes.isEmpty()) {
             throw new IllegalArgumentException("Add at least one process.");
         }
-        // Only 2 or 3 queues are allowed
-        if (queueConfigs.size() < 2 || queueConfigs.size() > 3) {
-            throw new IllegalArgumentException("Configure 2 or 3 queues.");
+        if (queue1Quantum <= 0 || queue2Quantum <= 0) {
+            throw new IllegalArgumentException("Round Robin quantum must be greater than 0.");
         }
 
-        // Queue levels must be 1, 2, (3) in order, and RR needs a quantum above 0
-        for (int i = 0; i < queueConfigs.size(); i++) {
-            QueueConfig queue = Objects.requireNonNull(queueConfigs.get(i), "Queue configuration is required.");
-            if (queue.level() != i + 1) {
-                throw new IllegalArgumentException("Queue levels must be numbered consecutively from 1.");
-            }
-            Objects.requireNonNull(queue.algorithm(), "Queue algorithm is required.");
-            if (queue.algorithm() == Algorithm.RR && queue.quantumTime() <= 0) {
-                throw new IllegalArgumentException("Round Robin quantum must be greater than 0.");
-            }
-        }
-
-        // Process IDs must be unique (case-insensitive), times valid, and the queue must exist
+        // Process IDs must be unique
         Set<String> ids = new HashSet<>();
         for (ProcessInput process : processes) {
             Objects.requireNonNull(process, "Process details are required.");
@@ -246,8 +229,8 @@ public final class MLQ_Scheduler {
             if (process.arrivalTime() < 0 || process.burstTime() <= 0) {
                 throw new IllegalArgumentException("Arrival time must be >= 0 and burst time must be > 0.");
             }
-            if (process.queueLevel() < 1 || process.queueLevel() > queueConfigs.size()) {
-                throw new IllegalArgumentException("Every process must be assigned to a configured queue.");
+            if (process.queueLevel() < 1 || process.queueLevel() > 3) {
+                throw new IllegalArgumentException("Every process must be assigned to queue 1, 2, or 3.");
             }
         }
     }
@@ -261,21 +244,8 @@ public final class MLQ_Scheduler {
         return null;
     }
 
-    // Take the next process out of a queue based on that queue's algorithm
     private static ProcessState selectProcess(QueueState queue) {
-        return switch (queue.config.algorithm()) {
-            case FCFS, RR -> queue.ready.removeFirst();                                          // Front of the line
-            case SJF -> removeMinimum(queue, Comparator.comparingInt(p -> p.input.burstTime())); // Shortest burst
-            case SRTF -> removeMinimum(queue, Comparator.comparingInt(p -> p.remainingTime));    // Shortest remaining
-        };
-    }
-
-    // Remove the smallest process by the comparator (tie: the one earliest in line)
-    private static ProcessState removeMinimum(
-            QueueState queue, Comparator<ProcessState> comparator) {
-        ProcessState selected = queue.ready.stream().min(comparator).orElseThrow();
-        queue.ready.remove(selected);
-        return selected;
+        return queue.ready.removeFirst();
     }
 
     private static void addGanttBlock(

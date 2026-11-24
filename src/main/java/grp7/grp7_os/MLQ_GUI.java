@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -28,12 +27,9 @@ import javax.swing.table.DefaultTableCellRenderer;
 
 public class MLQ_GUI extends JFrame {
 
-    private static final String[] ALGORITHMS = {"FCFS", "SJF", "SRTF", "RR"};
     private final Runnable onClose;
-    private final JSpinner queueCount = new JSpinner(new SpinnerNumberModel(2, 2, 3, 1));
-    private final JPanel queueConfigurationPanel = new JPanel(new GridLayout(0, 1, 4, 4));
-    private final List<JComboBox<String>> algorithmChoices = new ArrayList<>();
-    private final List<JSpinner> quantumChoices = new ArrayList<>();
+    private final JSpinner queue1Quantum = new JSpinner(new SpinnerNumberModel(2, 1, Integer.MAX_VALUE, 1));
+    private final JSpinner queue2Quantum = new JSpinner(new SpinnerNumberModel(2, 1, Integer.MAX_VALUE, 1));
     private final DefaultTableModel processModel = new DefaultTableModel(
             new Object[]{"PID", "Arrival Time", "Burst Time", "Queue"}, 0) {
         private final Class<?>[] columnTypes = {
@@ -75,8 +71,6 @@ public class MLQ_GUI extends JFrame {
         setSize(1360, 960);
         setLocationByPlatform(true);
         buildInterface();
-        rebuildQueueControls();
-        queueCount.addChangeListener(event -> rebuildQueueControls());
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent event) {
@@ -101,11 +95,19 @@ public class MLQ_GUI extends JFrame {
 
         JPanel queueSettings = new JPanel(new BorderLayout(6, 4));
         queueSettings.setBorder(BorderFactory.createTitledBorder("Queue Configuration"));
-        JPanel queueCountRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        queueCountRow.add(new JLabel("Number of queues (2-3):"));
-        queueCountRow.add(queueCount);
-        queueSettings.add(queueCountRow, BorderLayout.NORTH);
-        queueSettings.add(queueConfigurationPanel, BorderLayout.CENTER);
+        JPanel fixedQueues = new JPanel(new GridLayout(3, 1, 4, 4));
+        JPanel queue1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        queue1.add(new JLabel("Queue 1 — RR, Quantum:"));
+        queue1.add(queue1Quantum);
+        JPanel queue2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        queue2.add(new JLabel("Queue 2 — RR, Quantum:"));
+        queue2.add(queue2Quantum);
+        JPanel queue3 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        queue3.add(new JLabel("Queue 3 — FCFS"));
+        fixedQueues.add(queue1);
+        fixedQueues.add(queue2);
+        fixedQueues.add(queue3);
+        queueSettings.add(fixedQueues, BorderLayout.CENTER);
         JPanel top = new JPanel(new BorderLayout(4, 4));
         top.add(header, BorderLayout.NORTH);
         top.add(queueSettings, BorderLayout.CENTER);
@@ -148,44 +150,6 @@ public class MLQ_GUI extends JFrame {
         configureTable(ganttTable, false);
     }
 
-    private void rebuildQueueControls() {
-        int count = (Integer) queueCount.getValue();
-        String[] defaults = count == 2
-                ? new String[]{"FCFS", "RR"}
-                : new String[]{"FCFS", "SJF", "RR"};
-        algorithmChoices.clear();
-        quantumChoices.clear();
-        queueConfigurationPanel.removeAll();
-
-        for (int i = 0; i < count; i++) {
-            int level = i + 1;
-            JComboBox<String> algorithm = new JComboBox<>(ALGORITHMS);
-            algorithm.setSelectedItem(defaults[i]);
-            JSpinner quantum = new JSpinner(new SpinnerNumberModel(2, 1, Integer.MAX_VALUE, 1));
-            JLabel quantumLabel = new JLabel("Quantum:");
-            JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            row.add(new JLabel("Queue " + level + (level == 1 ? " (highest priority):" : ":")));
-            row.add(algorithm);
-            row.add(quantumLabel);
-            row.add(quantum);
-            algorithm.addActionListener(event -> {
-                boolean roundRobin = "RR".equals(algorithm.getSelectedItem());
-                quantumLabel.setVisible(roundRobin);
-                quantum.setVisible(roundRobin);
-                row.revalidate();
-            });
-            boolean roundRobin = "RR".equals(algorithm.getSelectedItem());
-            quantumLabel.setVisible(roundRobin);
-            quantum.setVisible(roundRobin);
-            algorithmChoices.add(algorithm);
-            quantumChoices.add(quantum);
-            queueConfigurationPanel.add(row);
-        }
-
-        queueConfigurationPanel.revalidate();
-        queueConfigurationPanel.repaint();
-    }
-
     private JPanel createTablePanel(String title, JTable table) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder(title));
@@ -226,15 +190,10 @@ public class MLQ_GUI extends JFrame {
                         Integer.parseInt(cellText(row, 3))));
             }
 
-            List<MLQ_Scheduler.QueueConfig> queues = new ArrayList<>();
-            for (int i = 0; i < algorithmChoices.size(); i++) {
-                MLQ_Scheduler.Algorithm algorithm = MLQ_Scheduler.Algorithm.valueOf(
-                        algorithmChoices.get(i).getSelectedItem().toString());
-                int quantum = (Integer) quantumChoices.get(i).getValue();
-                queues.add(new MLQ_Scheduler.QueueConfig(i + 1, algorithm, quantum));
-            }
-
-            MLQ_Scheduler.ScheduleResult result = new MLQ_Scheduler().calculate(processes, queues);
+            MLQ_Scheduler.ScheduleResult result = new MLQ_Scheduler().calculate(
+                    processes,
+                    (Integer) queue1Quantum.getValue(),
+                    (Integer) queue2Quantum.getValue());
             resultModel.setRowCount(0);
             for (MLQ_Scheduler.ProcessResult process : result.processes()) {
                 resultModel.addRow(new Object[]{
