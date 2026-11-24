@@ -90,6 +90,7 @@ public class MainMenu extends javax.swing.JFrame {
 
         jButton1.setFont(new java.awt.Font("sansserif", 0, 36)); // NOI18N
         jButton1.setText("Priority (Non Preemptive)");
+        jButton1.addActionListener(this::jButton1ActionPerformed);
 
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
@@ -209,8 +210,25 @@ public class MainMenu extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        PNP_GUI schedulerWindow = new PNP_GUI();
+        schedulerWindow.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        schedulerWindow.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent event) {
+                setVisible(true);
+            }
+        });
+        schedulerWindow.setLocationRelativeTo(this);
+        setVisible(false);
+        schedulerWindow.setVisible(true);
+    }//GEN-LAST:event_jButton1ActionPerformed
+
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-        // TODO add your handling code here:
+        MLQ_GUI schedulerWindow = new MLQ_GUI(() -> setVisible(true));
+        schedulerWindow.setLocationRelativeTo(this);
+        setVisible(false);
+        schedulerWindow.setVisible(true);
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
