@@ -16,6 +16,8 @@ import java.util.Set;
  * Queue 1 and queue 2 use Round Robin; queue 3 uses FCFS.
  * A higher-priority queue always preempts a lower-priority one.
  * Each process is assigned to a specific queue and does not move between queues.
+ * Tie rule: if a process arrives at the same instant another's RR quantum expires,
+ * the new arrival is queued first and the expired process goes behind it.
  */
 
 public final class MLQ_Scheduler {
@@ -32,7 +34,8 @@ public final class MLQ_Scheduler {
             int burstTime,
             int completionTime,
             int turnaroundTime,
-            int waitingTime) {
+            int waitingTime,
+            int responseTime) {
     }
 
     // One Gantt chart block
@@ -51,7 +54,10 @@ public final class MLQ_Scheduler {
             List<ProcessResult> processes,
             List<GanttBlock> ganttBlocks,
             double averageTurnaroundTime,
-            double averageWaitingTime) {
+            double averageWaitingTime,
+            double averageResponseTime,
+            double cpuUtilization,
+            double throughput) {
     }
 
     private static final class ProcessState {
@@ -59,6 +65,7 @@ public final class MLQ_Scheduler {
         private final int inputOrder;
         private int remainingTime;
         private int completionTime;
+        private int firstStartTime = -1;
 
         private ProcessState(ProcessInput input, int inputOrder) {
             this.input = input;
@@ -112,6 +119,7 @@ public final class MLQ_Scheduler {
         int quantumCounter = 0;
         ProcessState activeProcess = null;
         QueueState activeQueue = null;
+        ProcessState expiredProcess = null; // RR process whose quantum just ended
 
         // Loop until all processes are finished
         while (completedCount < processes.size()) {
@@ -121,6 +129,13 @@ public final class MLQ_Scheduler {
                     && arrivals.get(nextArrival).input.arrivalTime() <= currentTime) {
                 ProcessState arrived = arrivals.get(nextArrival++);
                 queues.get(arrived.input.queueLevel() - 1).ready.addLast(arrived);
+            }
+
+            // A process whose quantum ended at this instant joins the back of its queue
+            // AFTER the processes that arrived at this same instant
+            if (expiredProcess != null) {
+                queues.get(expiredProcess.input.queueLevel() - 1).ready.addLast(expiredProcess);
+                expiredProcess = null;
             }
 
             // Highest priority queue that has someone waiting
@@ -156,6 +171,9 @@ public final class MLQ_Scheduler {
 
             // Run the chosen process for exactly 1 time unit
             int startTime = currentTime;
+            if (activeProcess.firstStartTime < 0) {
+                activeProcess.firstStartTime = startTime;
+            }
             currentTime = Math.addExact(currentTime, 1);
             activeProcess.remainingTime--;
             quantumCounter++;
@@ -171,8 +189,9 @@ public final class MLQ_Scheduler {
                 quantumCounter = 0;
             } else if (activeQueue.usesRoundRobin()
                     && quantumCounter == activeQueue.quantumTime) {
-                // RR quantum used up. Send the process to the back of its queue
-                activeQueue.ready.addLast(activeProcess);
+                // RR quantum used up. It is re-queued at the top of the next loop,
+                // after any new arrivals at that time
+                expiredProcess = activeProcess;
                 activeProcess = null;
                 activeQueue = null;
                 quantumCounter = 0;
@@ -182,9 +201,11 @@ public final class MLQ_Scheduler {
         List<ProcessResult> results = new ArrayList<>();
         double totalTurnaround = 0;
         double totalWaiting = 0;
+        double totalResponse = 0;
         for (ProcessState process : processes) {
             int turnaround = process.completionTime - process.input.arrivalTime(); // TAT = CT - AT
             int waiting = turnaround - process.input.burstTime();                  // WT = TAT - BT
+            int response = process.firstStartTime - process.input.arrivalTime();
             results.add(new ProcessResult(
                     process.input.id(),
                     process.input.queueLevel(),
@@ -192,17 +213,23 @@ public final class MLQ_Scheduler {
                     process.input.burstTime(),
                     process.completionTime,
                     turnaround,
-                    waiting));
+                    waiting,
+                    response));
             totalTurnaround += turnaround;
             totalWaiting += waiting;
+            totalResponse += response;
         }
 
-        // Compute final averages
+        int totalTime = currentTime;
+        long busyTime = processInputs.stream().mapToLong(ProcessInput::burstTime).sum();
         return new ScheduleResult(
                 List.copyOf(results),
                 List.copyOf(ganttBlocks),
                 totalTurnaround / processes.size(),
-                totalWaiting / processes.size());
+                totalWaiting / processes.size(),
+                totalResponse / processes.size(),
+                ((double) busyTime / totalTime) * 100.0,
+                (double) processes.size() / totalTime);
     }
 
     // Checks the input

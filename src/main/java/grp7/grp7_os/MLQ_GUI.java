@@ -42,14 +42,17 @@ public class MLQ_GUI extends JFrame {
         }
     };
     private final DefaultTableModel resultModel = new DefaultTableModel(
-            new Object[]{"Completion Time", "Turnaround Time", "Waiting Time"}, 0) {
+            new Object[]{"PID", "Completion Time", "Turnaround Time", "Waiting Time", "Response Time"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
         }
     };
     private final DefaultTableModel summaryModel = new DefaultTableModel(
-            new Object[]{"Avg. Turnaround Time", "Avg. Waiting Time"}, 0) {
+            new Object[]{
+                "Avg. Waiting Time", "Avg. Turnaround Time", "Avg. Response Time",
+                "CPU Utilization (%)", "Throughput"
+            }, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
@@ -197,15 +200,20 @@ public class MLQ_GUI extends JFrame {
             resultModel.setRowCount(0);
             for (MLQ_Scheduler.ProcessResult process : result.processes()) {
                 resultModel.addRow(new Object[]{
+                    process.id(),
                     process.completionTime(),
                     process.turnaroundTime(),
-                    process.waitingTime()
+                    process.waitingTime(),
+                    process.responseTime()
                 });
             }
             summaryModel.setRowCount(0);
             summaryModel.addRow(new Object[]{
+                roundToTwoDecimals(result.averageWaitingTime()),
                 roundToTwoDecimals(result.averageTurnaroundTime()),
-                roundToTwoDecimals(result.averageWaitingTime())
+                roundToTwoDecimals(result.averageResponseTime()),
+                roundToTwoDecimals(result.cpuUtilization()),
+                roundToTwoDecimals(result.throughput())
             });
             renderGanttChart(result.ganttBlocks());
         } catch (NumberFormatException exception) {
@@ -233,7 +241,16 @@ public class MLQ_GUI extends JFrame {
         }
         model.addRow(timeRow);
         ganttTable.setModel(model);
+        ganttTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         configureTable(ganttTable, false);
+        ganttTable.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        int totalTime = blocks.get(blocks.size() - 1).endTime();
+        double pixelsPerTimeUnit = Math.min(48.0, 40_000.0 / totalTime);
+        for (int i = 0; i < blocks.size(); i++) {
+            long duration = (long) blocks.get(i).endTime() - blocks.get(i).startTime();
+            int width = Math.max(1, (int) Math.round(duration * pixelsPerTimeUnit));
+            ganttTable.getColumnModel().getColumn(i).setPreferredWidth(width);
+        }
     }
 
     private double roundToTwoDecimals(double value) {
