@@ -58,6 +58,7 @@ public class PNP_GUI extends javax.swing.JFrame {
         calculate = new javax.swing.JButton();
         clear = new javax.swing.JButton();
         deleteRow = new javax.swing.JButton();
+        loadSample = new javax.swing.JButton();
         jScrollPane3 = new javax.swing.JScrollPane();
         summaryTable = new javax.swing.JTable();
         jScrollPane4 = new javax.swing.JScrollPane();
@@ -140,6 +141,9 @@ public class PNP_GUI extends javax.swing.JFrame {
         deleteRow.setText("Delete Row");
         deleteRow.addActionListener(this::deleteRowActionPerformed);
 
+        loadSample.setText("Sample Data");
+        loadSample.addActionListener(this::loadSampleActionPerformed);
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -153,6 +157,8 @@ public class PNP_GUI extends javax.swing.JFrame {
                 .addComponent(calculate)
                 .addGap(39, 39, 39)
                 .addComponent(clear)
+                .addGap(18, 18, 18)
+                .addComponent(loadSample)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
@@ -163,7 +169,8 @@ public class PNP_GUI extends javax.swing.JFrame {
                     .addComponent(addRow)
                     .addComponent(calculate)
                     .addComponent(clear)
-                    .addComponent(deleteRow))
+                    .addComponent(deleteRow)
+                    .addComponent(loadSample))
                 .addGap(25, 25, 25))
         );
 
@@ -269,43 +276,51 @@ public class PNP_GUI extends javax.swing.JFrame {
         inputTable.getCellEditor().stopCellEditing();
     }
 
+    //Checks how many rows are present
     int rows = inModel.getRowCount();
+    
+    //Error message if there are no rows present
     if (rows == 0) {
         JOptionPane.showMessageDialog(this, "Please add at least one process.", "Input Error", JOptionPane.ERROR_MESSAGE);
         return;
     }
 
+    //Initialize arrays which holds the process details per array index. the variable 'rows' determine the size of the array.
     int[] pid = new int[rows];
     int[] arrival = new int[rows];
     int[] burst = new int[rows];
     int[] priority = new int[rows];
 
     try {
+        //Cycles through the table rows to read each individual process data
         for (int i = 0; i < rows; i++) {
+            //Gets the value for each row
             pid[i] = Integer.parseInt(inModel.getValueAt(i, 0).toString());
             arrival[i] = Integer.parseInt(inModel.getValueAt(i, 1).toString());
             burst[i] = Integer.parseInt(inModel.getValueAt(i, 2).toString());
             priority[i] = Integer.parseInt(inModel.getValueAt(i, 3).toString());
 
-//            check if AT and prio are >= 0, if BT is >0
+//            check if AT and prio are >= 0, if BT is >0. Errors if any of those are true
             if (arrival[i] < 0 || burst[i] <= 0 || priority[i] < 0) {
                 JOptionPane.showMessageDialog(this, "Arrival and Priority must be greater than or equal to 0, and Burst Time must be > 0.", "Invalid Range", JOptionPane.ERROR_MESSAGE);
                 return;
             }
         }
     } catch (Exception e) {
-//        error if there is anything other than an integer
+//        Error if there is anything other than an integer
         JOptionPane.showMessageDialog(this, "All cells must contain valid whole numbers.", "Input Error", JOptionPane.ERROR_MESSAGE);
         return;
     }
 
+    //Prepare the class file containing the Priority Non-Preemptive scheduler
     PNP_Scheduler sched = new PNP_Scheduler();
+    //Grabs the calculate method in the PNP_Scheduler class file, and then passes the arrays from earlier, which is now populated with values.
     sched.calculate(pid, arrival, burst, priority);
 
     // populate per-process output table
-    outModel.setRowCount(0);
+    outModel.setRowCount(0); //Clears the output table .
     for (int i = 0; i < rows; i++) {
-        outModel.addRow(new Object[]{
+        outModel.addRow(new Object[]{ //cycles through the process data that was calculated from the calculate method in PNP_Scheduler
             sched.completionTime[i],
             sched.turnaroundTime[i],
             sched.waitingTime[i],
@@ -316,11 +331,11 @@ public class PNP_GUI extends javax.swing.JFrame {
     // populate summary metrics table
     resultsModel.setRowCount(0);
     resultsModel.addRow(new Object[]{
-        Math.round(sched.avgWaitTime * 100.0) / 100.0,
-        Math.round(sched.avgTurnaroundTime * 100.0) / 100.0,
-        Math.round(sched.avgResponseTime * 100.0) / 100.0,
-        Math.round(sched.cpuUtilization * 100.0) / 100.0,
-        Math.round(sched.throughput * 100.0) / 100.0
+        sched.avgWaitTime,
+        sched.avgTurnaroundTime,
+        sched.avgResponseTime,
+        sched.cpuUtilization,
+        sched.throughput
     });
 
     // Draw the Gantt chart
@@ -340,31 +355,42 @@ public class PNP_GUI extends javax.swing.JFrame {
         inModel.removeRow(inputTable.getSelectedRow()); 
     }//GEN-LAST:event_deleteRowActionPerformed
 
+    private void loadSampleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadSampleActionPerformed
+        // TODO add your handling code here:
+        inModel.addRow(new Integer[]{1,13,10,1,0});
+        inModel.addRow(new Integer[]{2,6,7,0,0});
+        inModel.addRow(new Integer[]{5,1,8,2,0});
+        inModel.addRow(new Integer[]{7,23,18,1,0});
+        inModel.addRow(new Integer[]{3,3,12,0,0});
+        inModel.addRow(new Integer[]{6,38,5,1,0});
+        inModel.addRow(new Integer[]{4,34,17,0,0});
+    }//GEN-LAST:event_loadSampleActionPerformed
+
     private void renderGanttChart(ArrayList<String> ganttBlocks) {
     DefaultTableModel ganttModel = new DefaultTableModel();
     Object[] timeRow = new Object[ganttBlocks.size()];
 
     // Each block in ganttBlocks is formatted as "Label,Start,End"
     for (int i = 0; i < ganttBlocks.size(); i++) {
-        String[] parts = ganttBlocks.get(i).split(",");
+        String[] parts = ganttBlocks.get(i).split(","); //Split the ganttBlocks array list to get individual data.
         String label = parts[0];
         String start = parts[1];
         String end = parts[2];
 
         // column header = process name
-        ganttModel.addColumn(label);
-        // this shows time interval
+        ganttModel.addColumn(label); //Columns will be added until the for loop is done. The column name is the label, which is either the process ID or IDLE
+        // This shows the time interval
         timeRow[i] = start + " - " + end;
     }
 
     ganttModel.addRow(timeRow);
-    ganttTable.setModel(ganttModel);
+    ganttTable.setModel(ganttModel); //sets the model for the gantt chart table
     ganttTable.setRowHeight(40);
     
-    // ceneter-align the time intervals
+    // ceneter-align the time intervals for readability purposes.
     javax.swing.table.DefaultTableCellRenderer center = new javax.swing.table.DefaultTableCellRenderer();
     center.setHorizontalAlignment(JLabel.CENTER);
-    for (int i = 0; i < ganttTable.getColumnCount(); i++) {
+    for (int i = 0; i < ganttTable.getColumnCount(); i++) { //Iterates through all columns until they are all centered.
         ganttTable.getColumnModel().getColumn(i).setCellRenderer(center);
     }
 }
@@ -409,6 +435,7 @@ public class PNP_GUI extends javax.swing.JFrame {
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JScrollPane jScrollPane4;
     private java.awt.Label label1;
+    private javax.swing.JButton loadSample;
     private javax.swing.JTable outTable;
     private javax.swing.JTable summaryTable;
     // End of variables declaration//GEN-END:variables
