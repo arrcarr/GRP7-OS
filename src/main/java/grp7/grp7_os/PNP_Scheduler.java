@@ -86,8 +86,12 @@ public class PNP_Scheduler {
                                 chosenIndex = i;
                                 continue;
                             }
+                        } else if(priority[i] > priority[chosenIndex]){
+                            continue;
                         }
                     }
+                } else{
+                    continue;
                 }
             }
 
@@ -97,7 +101,7 @@ public class PNP_Scheduler {
                 currentTime++;
                 totalIdleTime++;
             } else {
-                // If Run the chosen process completely (Non-Preemptive)
+                // Run the chosen process completely (Non-Preemptive)
 //                set start and end time for the process of the current index
                 int startTime = currentTime;
                 int endTime = startTime + burst[chosenIndex];

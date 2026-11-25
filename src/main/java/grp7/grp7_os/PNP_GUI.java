@@ -59,6 +59,7 @@ public class PNP_GUI extends javax.swing.JFrame {
         clear = new javax.swing.JButton();
         deleteRow = new javax.swing.JButton();
         loadSample = new javax.swing.JButton();
+        loadSample1 = new javax.swing.JButton();
         jScrollPane3 = new javax.swing.JScrollPane();
         summaryTable = new javax.swing.JTable();
         jScrollPane4 = new javax.swing.JScrollPane();
@@ -144,6 +145,9 @@ public class PNP_GUI extends javax.swing.JFrame {
         loadSample.setText("Sample Data");
         loadSample.addActionListener(this::loadSampleActionPerformed);
 
+        loadSample1.setText("Sample Data 2");
+        loadSample1.addActionListener(this::loadSample1ActionPerformed);
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -157,19 +161,22 @@ public class PNP_GUI extends javax.swing.JFrame {
                 .addComponent(calculate)
                 .addGap(39, 39, 39)
                 .addComponent(clear)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(loadSample1)
                 .addGap(18, 18, 18)
                 .addComponent(loadSample)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(40, 40, 40))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+            .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap(27, Short.MAX_VALUE)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(addRow)
                     .addComponent(calculate)
                     .addComponent(clear)
                     .addComponent(deleteRow)
+                    .addComponent(loadSample1)
                     .addComponent(loadSample))
                 .addGap(25, 25, 25))
         );
@@ -229,9 +236,9 @@ public class PNP_GUI extends javax.swing.JFrame {
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 649, Short.MAX_VALUE)
+                        .addComponent(jScrollPane1)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 657, Short.MAX_VALUE))
+                        .addComponent(jScrollPane2))
                     .addComponent(jScrollPane4))
                 .addContainerGap())
         );
@@ -366,6 +373,17 @@ public class PNP_GUI extends javax.swing.JFrame {
         inModel.addRow(new Integer[]{4,34,17,0,0});
     }//GEN-LAST:event_loadSampleActionPerformed
 
+    private void loadSample1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadSample1ActionPerformed
+        // TODO add your handling code here:
+        inModel.addRow(new Integer[]{5,1,8,2,0});
+        inModel.addRow(new Integer[]{2,6,7,0,0});
+        inModel.addRow(new Integer[]{4,34,17,0,0});
+        inModel.addRow(new Integer[]{6,38,5,1,0});
+        inModel.addRow(new Integer[]{3,3,12,0,0});
+        inModel.addRow(new Integer[]{7,23,18,1,0});
+        inModel.addRow(new Integer[]{1,13,10,1,0});
+    }//GEN-LAST:event_loadSample1ActionPerformed
+
     private void renderGanttChart(ArrayList<String> ganttBlocks) {
     DefaultTableModel ganttModel = new DefaultTableModel();
     Object[] timeRow = new Object[ganttBlocks.size()];
@@ -436,6 +454,7 @@ public class PNP_GUI extends javax.swing.JFrame {
     private javax.swing.JScrollPane jScrollPane4;
     private java.awt.Label label1;
     private javax.swing.JButton loadSample;
+    private javax.swing.JButton loadSample1;
     private javax.swing.JTable outTable;
     private javax.swing.JTable summaryTable;
     // End of variables declaration//GEN-END:variables
