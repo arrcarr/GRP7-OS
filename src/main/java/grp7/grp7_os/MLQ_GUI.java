@@ -42,7 +42,7 @@ public class MLQ_GUI extends JFrame {
         }
     };
     private final DefaultTableModel resultModel = new DefaultTableModel(
-            new Object[]{"PID", "Completion Time", "Turnaround Time", "Waiting Time", "Response Time"}, 0) {
+            new Object[]{"Completion Time", "Turnaround Time", "Waiting Time", "Response Time"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
@@ -61,7 +61,9 @@ public class MLQ_GUI extends JFrame {
     private final JTable processTable = new JTable(processModel);
     private final JTable resultTable = new JTable(resultModel);
     private final JTable summaryTable = new JTable(summaryModel);
-    private final JTable ganttTable = new JTable(new DefaultTableModel());
+    private final JTable ganttTable = new JTable(new DefaultTableModel(
+            new Object[][]{{"Calculate and your processes are shown here."}},
+            new Object[]{"Gantt Chart"}));
 
     public MLQ_GUI() {
         this(null);
@@ -97,7 +99,7 @@ public class MLQ_GUI extends JFrame {
         header.setPreferredSize(new Dimension(100, 100));
 
         JPanel queueSettings = new JPanel(new BorderLayout(6, 4));
-        queueSettings.setBorder(BorderFactory.createTitledBorder("Queue Configuration"));
+        queueSettings.setBorder(BorderFactory.createTitledBorder("Queue Settings"));
         JPanel fixedQueues = new JPanel(new GridLayout(3, 1, 4, 4));
         JPanel queue1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
         queue1.add(new JLabel("Queue 1 — RR, Quantum:"));
@@ -119,12 +121,14 @@ public class MLQ_GUI extends JFrame {
         JPanel center = new JPanel(new BorderLayout(6, 6));
         JPanel processTables = new JPanel(new GridLayout(1, 2, 6, 6));
         processTables.add(createTablePanel("Input Processes", processTable));
-        processTables.add(createTablePanel("Per-Process Results", resultTable));
+        processTables.add(createTablePanel("Results", resultTable));
         center.add(processTables, BorderLayout.CENTER);
 
         JPanel lower = new JPanel(new BorderLayout(6, 6));
         lower.setPreferredSize(new Dimension(100, 260));
-        lower.add(createTablePanel("Summary Metrics", summaryTable), BorderLayout.NORTH);
+        JPanel summaryPanel = createTablePanel("Averages", summaryTable);
+        summaryPanel.setPreferredSize(new Dimension(100, 115));
+        lower.add(summaryPanel, BorderLayout.NORTH);
         lower.add(createTablePanel("Gantt Chart", ganttTable), BorderLayout.CENTER);
         center.add(lower, BorderLayout.SOUTH);
         content.add(center, BorderLayout.CENTER);
@@ -200,7 +204,6 @@ public class MLQ_GUI extends JFrame {
             resultModel.setRowCount(0);
             for (MLQ_Scheduler.ProcessResult process : result.processes()) {
                 resultModel.addRow(new Object[]{
-                    process.id(),
                     process.completionTime(),
                     process.turnaroundTime(),
                     process.waitingTime(),
@@ -236,13 +239,14 @@ public class MLQ_GUI extends JFrame {
         Object[] timeRow = new Object[blocks.size()];
         for (int i = 0; i < blocks.size(); i++) {
             MLQ_Scheduler.GanttBlock block = blocks.get(i);
-            model.addColumn(block.label());
+            model.addColumn(block.isIdle() ? "IDLE" : block.processId());
             timeRow[i] = block.startTime() + " - " + block.endTime();
         }
         model.addRow(timeRow);
         ganttTable.setModel(model);
         ganttTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         configureTable(ganttTable, false);
+        ganttTable.setRowHeight(40);
         ganttTable.setFont(new Font("SansSerif", Font.PLAIN, 12));
         int totalTime = blocks.get(blocks.size() - 1).endTime();
         double pixelsPerTimeUnit = Math.min(48.0, 40_000.0 / totalTime);
@@ -270,7 +274,10 @@ public class MLQ_GUI extends JFrame {
         processModel.setRowCount(0);
         resultModel.setRowCount(0);
         summaryModel.setRowCount(0);
-        ganttTable.setModel(new DefaultTableModel());
+        ganttTable.setModel(new DefaultTableModel(
+                new Object[][]{{"Add processes and click Calculate to display the Gantt chart."}},
+                new Object[]{"Gantt Chart"}));
+        ganttTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
     }
 
     private void showInputError(String message) {
