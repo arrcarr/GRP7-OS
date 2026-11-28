@@ -8,8 +8,10 @@ import javax.swing.table.DefaultTableModel;
 import java.util.*;
 import javax.swing.table.*;
 /**
- *
- * @author cecile
+ * Author: Rafael Francis P. Carrillo
+ * Algorithm: Priority Scheduling (Non-Preemptive)
+ * Conventions: Lower priority number = higher priority. No aging.
+ * Ties broken by: 1. Higher Priority (smaller number) -> 2. Earlier Arrival -> 3. Lower PID.
  */
 public class PNP_GUI extends javax.swing.JFrame {
     public String algorithm = "PNP";
@@ -87,7 +89,7 @@ public class PNP_GUI extends javax.swing.JFrame {
                 .addContainerGap(22, Short.MAX_VALUE))
         );
 
-        inputTable.setFont(new java.awt.Font("Adwaita Sans", 0, 24)); // NOI18N
+        inputTable.setFont(new java.awt.Font("Adwaita Sans", 0, 36)); // NOI18N
         inputTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
 
@@ -105,11 +107,13 @@ public class PNP_GUI extends javax.swing.JFrame {
             }
         });
         inputTable.setColumnSelectionAllowed(true);
+        inputTable.setRowHeight(50);
         inputTable.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         inputTable.getTableHeader().setReorderingAllowed(false);
         jScrollPane1.setViewportView(inputTable);
         inputTable.getColumnModel().getSelectionModel().setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
 
+        outTable.setFont(new java.awt.Font("sansserif", 0, 36)); // NOI18N
         outTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
 
@@ -126,6 +130,7 @@ public class PNP_GUI extends javax.swing.JFrame {
                 return canEdit [columnIndex];
             }
         });
+        outTable.setRowHeight(50);
         jScrollPane2.setViewportView(outTable);
 
         jPanel1.setBackground(new java.awt.Color(153, 255, 255));
@@ -181,6 +186,7 @@ public class PNP_GUI extends javax.swing.JFrame {
                 .addGap(25, 25, 25))
         );
 
+        summaryTable.setFont(new java.awt.Font("sansserif", 0, 36)); // NOI18N
         summaryTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
                 {null, null, null, null, null}
@@ -204,6 +210,7 @@ public class PNP_GUI extends javax.swing.JFrame {
                 return canEdit [columnIndex];
             }
         });
+        summaryTable.setRowHeight(50);
         jScrollPane3.setViewportView(summaryTable);
         if (summaryTable.getColumnModel().getColumnCount() > 0) {
             summaryTable.getColumnModel().getColumn(0).setResizable(false);
@@ -213,6 +220,7 @@ public class PNP_GUI extends javax.swing.JFrame {
             summaryTable.getColumnModel().getColumn(4).setResizable(false);
         }
 
+        ganttTable.setFont(new java.awt.Font("sansserif", 0, 36)); // NOI18N
         ganttTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
                 {null, null, null, null},
@@ -224,6 +232,7 @@ public class PNP_GUI extends javax.swing.JFrame {
                 "Title 1", "Title 2", "Title 3", "Title 4"
             }
         ));
+        ganttTable.setRowHeight(50);
         jScrollPane4.setViewportView(ganttTable);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
