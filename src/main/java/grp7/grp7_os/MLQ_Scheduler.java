@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Author: Prince Irwin Martin C. Diaz
@@ -21,6 +23,8 @@ import java.util.Set;
  */
 
 public final class MLQ_Scheduler {
+
+    private static final Pattern TRAILING_PID_NUMBER = Pattern.compile("^(.*?)(\\d+)$");
 
     // One row of user input (queueLevel 1 = highest priority queue)
     public record ProcessInput(String id, int arrivalTime, int burstTime, int queueLevel) {
@@ -106,9 +110,11 @@ public final class MLQ_Scheduler {
             processes.add(new ProcessState(processInputs.get(i), i));
         }
 
-        // Sort by arrival time (tie: input order) so we can admit them one by one
+        // Sort by arrival time, then PID; keep input order as a final tie-breaker.
         List<ProcessState> arrivals = processes.stream()
                 .sorted(Comparator.comparingInt((ProcessState p) -> p.input.arrivalTime())
+                        .thenComparing((first, second) ->
+                                compareProcessIds(first.input.id(), second.input.id()))
                         .thenComparingInt(p -> p.inputOrder))
                 .toList();
 
@@ -273,6 +279,26 @@ public final class MLQ_Scheduler {
 
     private static ProcessState selectProcess(QueueState queue) {
         return queue.ready.removeFirst();
+    }
+
+    private static int compareProcessIds(String firstId, String secondId) {
+        Matcher firstMatch = TRAILING_PID_NUMBER.matcher(firstId.trim());
+        Matcher secondMatch = TRAILING_PID_NUMBER.matcher(secondId.trim());
+        if (firstMatch.matches() && secondMatch.matches()
+                && firstMatch.group(1).equalsIgnoreCase(secondMatch.group(1))) {
+            String firstNumber = firstMatch.group(2).replaceFirst("^0+(?!$)", "");
+            String secondNumber = secondMatch.group(2).replaceFirst("^0+(?!$)", "");
+            int numberComparison = Integer.compare(firstNumber.length(), secondNumber.length());
+            if (numberComparison == 0) {
+                numberComparison = firstNumber.compareTo(secondNumber);
+            }
+            if (numberComparison != 0) {
+                return numberComparison;
+            }
+        }
+
+        int textComparison = firstId.compareToIgnoreCase(secondId);
+        return textComparison != 0 ? textComparison : firstId.compareTo(secondId);
     }
 
     private static void addGanttBlock(
